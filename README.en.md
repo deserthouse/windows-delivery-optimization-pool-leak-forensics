@@ -6,7 +6,7 @@
 
 **A kernel-memory leak triggered by "seeding": Delivery Optimization (DoSvc) stuck jobs held 258–299 internet peers each, polled the NIC statistics via WMI a thousand times per second, every query failed on quota exhaustion (0x80041032) and was retried without backoff — accumulating 4.1 GB of kernel VAD leak over 5 days. The fix is turning P2P off; no driver is touched.**
 
-> **Note for non-expert readers**: if your machine shows "Task Manager looks fine, yet the whole system stutters — reboot helps, it comes back days later", start with the [symptom check](README.md#症状对照) and then follow the [remediation doc](docs/02-remediation.en.md). You can hand this repo's link to your AI assistant and have it follow the steps — every step carries expected output.
+> **Note for non-expert readers**: if your machine shows "Task Manager looks fine, yet the whole system stutters — reboot helps, it comes back days later", start with the [symptom check](#symptom-check) and then follow the [remediation doc](docs/02-remediation.en.md). You can hand this repo's link to your AI assistant and have it follow the steps — every step carries expected output.
 
 ---
 
