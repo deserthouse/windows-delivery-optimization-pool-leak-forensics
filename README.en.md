@@ -13,6 +13,7 @@
 ## Contents
 
 - [What this is](#what-this-is)
+- [Symptom check](#symptom-check)
 - [Findings at a glance](#findings-at-a-glance)
 - [Docs](#docs)
 - [Evidence discipline](#evidence-discipline)
@@ -57,6 +58,23 @@ Companion repos (same family of cases): [OMEN dual-leak forensics](https://githu
 | 9 | One day after remediation: DODownloadMode=0 in effect, zero DO jobs, no recurrence | on-machine recheck (2026-09-23) | ✅ measured (persisted) |
 
 Both mechanisms were located and remediated — the fix = registry-disable P2P + clear the seeding queue + reboot, all in the [remediation doc](docs/02-remediation.en.md); the residual tail (#8) is documented, unresolved, and coexists harmlessly with a once-a-week reboot.
+
+---
+
+## Symptom check
+
+Both of these matching means it's probably this case:
+
+1. Task Manager → Performance → Memory shows a **nonpaged pool** in the GB range that keeps climbing; process memory normal, CPU idle, disks idle;
+2. System-wide intermittent freezes (most visible in games: everything locks for tens of seconds, then recovers), relieved by rebooting and returning days later.
+
+One command to confirm (the [scripts](scripts/) are read-only; Python as admin):
+
+```bash
+python scripts/pooltag.py snapshot.json
+```
+
+`VadS` at GB scale in the top list → follow this repo's process; also check the Delivery Optimization jobs (command in doc 02).
 
 ---
 
