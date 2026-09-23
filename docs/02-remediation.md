@@ -19,7 +19,7 @@ Get-DeliveryOptimizationStatus | Where-Object { $_.NumPeers -gt 50 }
 ```
 
 **预期（中招）**：列出若干任务，`Status` 为 `Paused`、`NumPeers` 一两百、下载字节远小于文件大小。
-**预期（没中）**：无输出或任务正常。没中的读者请勿继续，你的问题在别处（可参考姊妹仓的判据文档）。
+**预期（没中）**：无输出或任务正常。没中的读者请勿继续——你的问题在别处，池标签排查的通用方法见[微软官方 PoolMon 文档](https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/using-poolmon-to-find-a-kernel-mode-memory-leak)。
 
 ---
 

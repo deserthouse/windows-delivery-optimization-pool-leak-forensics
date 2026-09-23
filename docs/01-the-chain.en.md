@@ -59,7 +59,7 @@ ResultCode = 0x80041032   ← WMI quota exhausted
 
 **Symptom**: the nonpaged pool is required memory for GPU drivers (DMA buffers), the network stack, and disk IO; with 4.1 GB of dead nodes filling it, high-demand moments (game loading, heavy traffic) cross the threshold → allocations block → rendering stalls → the compositor waits on the GPU → full-screen freeze. Tens of seconds later the memory manager squeezes out fragmented space — self-healing, leaving no crash record.
 
-**The gamer's view of the same case**: freezes always strike during games (demand peaks meet the water line), last tens of seconds and self-recover (the pulse recedes), and leave almost no log trace (the error-reporting service itself is on the freeze list). This machine's timeline has matching scenes: a shell crash 8 minutes after a game session ended, Task Manager freezing to death, and one anti-cheat-driver green screen (a typical casualty shape during memory exhaustion).
+**The gamer's view of the same case**: freezes always strike during games (demand peaks meet the water line), last tens of seconds and self-recover (the pulse recedes), and leave almost no log trace (the error-reporting service itself is on the freeze list). This machine's timeline has matching scenes: a shell crash 8 minutes after a game session ended, Task Manager freezing to death, and one anti-cheat-driver green screen (cause undetermined — memory-exhaustion-induced and driver-defect hypotheses both stand, neither excluded).
 
 ---
 

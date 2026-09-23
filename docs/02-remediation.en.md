@@ -19,7 +19,7 @@ Get-DeliveryOptimizationStatus | Where-Object { $_.NumPeers -gt 50 }
 ```
 
 **Expected (affected)**: several jobs listed, `Status` `Paused`, `NumPeers` in the hundreds, downloaded bytes far below file size.
-**Expected (not affected)**: no output, or normal jobs. If not affected, stop here — see the companion repos' criteria docs.
+**Expected (not affected)**: no output, or normal jobs. If not affected, stop here — for generic pool-tag troubleshooting see the [official PoolMon docs](https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/using-poolmon-to-find-a-kernel-mode-memory-leak).
 
 ---
 
