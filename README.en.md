@@ -39,8 +39,6 @@ A Windows Update download job stuck Paused (22.8 MB, 3.5% downloaded, never clea
 
 **Difference from prior community reports**: each link individually is documented (Microsoft's official [DO troubleshooting](https://learn.microsoft.com), matching [WMI quota-loop cases](https://community.spiceworks.com), scattered VadS-leak discussions), but **the complete chain has not been published**. One neighbor to draw a line against: the [KB5072033 DO memory issue](https://support.bmileisure.com) (2025) was a patch bug — a completely different mechanism from the seeding chain here.
 
-Companion repos (same family of cases): [OMEN dual-leak forensics](https://github.com/deserthouse/omen-gaming-hub-pool-leak-forensics) · [AlibabaProtect](https://github.com/deserthouse/alibabaprotect-forensics).
-
 ---
 
 ## Findings at a glance

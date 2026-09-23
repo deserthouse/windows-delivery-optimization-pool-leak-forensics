@@ -39,8 +39,6 @@ Windows 更新的下载任务卡在 Paused（22.8 MB 只下了 3.5%，悬挂不�
 
 **与已知社区报告的差异**：四个环节各自都有人报告过（微软官方有 [DO 排错文档](https://learn.microsoft.com)、WMI 配额死循环有[同款案例](https://community.spiceworks.com)、VadS 泄漏现象有零散讨论），**但完整链条无人串联发表**。另有一个需要划清界限的邻居：[KB5072033 的 DO 内存问题](https://support.bmileisure.com)（2025）是补丁 bug，与本案例的做种机制完全不同。
 
-配套的两个姊妹仓（同族案件）：[OMEN 双泄漏取证](https://github.com/deserthouse/omen-gaming-hub-pool-leak-forensics)、[AlibabaProtect 小考](https://github.com/deserthouse/alibabaprotect-forensics)。
-
 ---
 
 ## 实测结论摘要
