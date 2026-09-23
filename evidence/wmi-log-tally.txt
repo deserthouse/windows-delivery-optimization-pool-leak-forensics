@@ -1,0 +1,10 @@
+=== WMI-Activity log tally (2026-09-21, session transcript) ===
+400 recent entries from Microsoft-Windows-WMI-Activity/Operational, grouped by ClientProcessId:
+  pid 1944 (DoSvc)    : 209   <- overwhelming majority
+  next-highest client : 36
+
+All 209 entries: identical query, identical failure.
+  Operation : IWbemServices::ExecQuery - ROOT/StandardCimv2 :
+              SELECT * FROM MSFT_NetAdapterStatisticsSettingData
+              WHERE Name = 'Realtek Gaming 2.5GbE Family Controller'
+  ResultCode: 0x80041032 (WBEM_E_QUOTA_VIOLATION)

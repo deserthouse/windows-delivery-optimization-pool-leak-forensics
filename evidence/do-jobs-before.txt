@@ -1,0 +1,18 @@
+=== DO seeding jobs BEFORE remediation (2026-09-21, session transcript) ===
+Source: Get-DeliveryOptimizationStatus (full-field dump; key job shown, 3 jobs total)
+NOTE: transcribed from the investigation session; raw output not persisted at capture time.
+
+FileId                     : bca53c4fcfb95739f8886e41165de119afa06998
+FileSize                   : 22,813,875
+FileSizeInCache            : 793,779
+TotalBytesDownloaded       : 793,779          (3.5%)
+BytesFromHttp              : 793,779
+Status                     : Paused
+InternetConnectionCount    : 258
+BytesToInternetPeers       : 4,427,647        (uploaded to strangers)
+DownloadMode               : Internet
+PredefinedCallerApplication: WU Client Download
+ExpireOn                   : 2026/9/23
+
+Companion jobs (same shape): 0ed15a9f... (NumPeers 261), 982f49f4... (NumPeers 250)
+Post-reboot check: identical FileIds returned (seeding sessions persist across reboots).
