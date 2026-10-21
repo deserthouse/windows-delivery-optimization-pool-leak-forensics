@@ -10,7 +10,7 @@
 >
 > This is an independent technical analysis, not affiliated with Microsoft; all scripts in this repository are read-only — see the [Disclaimer](DISCLAIMER.md).
 
-**A kernel-memory leak associated with "seeding": Delivery Optimization (DoSvc) stuck jobs held 258–299 internet peers each, polled the NIC statistics via WMI a thousand times per second; queries failed en masse with 0x80041032 (= WBEM_E_CALL_CANCELLED, a cancelled call — **not quota exhaustion**) and were retried repeatedly (the retry mechanism is inferred), accumulating 4.1 GB of kernel VAD leak over 5 days. Stopping P2P stopped the main leak in measurement; a ~0.3–0.8 GB/day residual remains unresolved (see #8).**
+> **Case notes on rising nonpaged-pool usage observed alongside Delivery Optimization activity on Windows 11. The archive records job state, WMI errors, and changes after mitigation; the full causal mechanism remains unconfirmed.**
 
 > **Note for non-expert readers**: if your machine shows "Task Manager looks fine, yet the whole system stutters — reboot helps, it comes back days later", start with the [symptom check](#symptom-check) and then follow the [remediation doc](docs/02-remediation.en.md). You can hand this repo's link to your AI assistant and have it follow the steps — every step carries expected output.
 
