@@ -1,6 +1,6 @@
 # Windows 传递优化做种泄漏小考
 
-**Windows 上一个由"做种"引发的内核内存泄漏：传递优化（DoSvc）卡死的下载任务挂着 258~299 个互联网 peer、以每秒上千次 WMI 查询轮询网卡统计，查询因配额耗尽全部失败并被无退避地重试，5 天累积 4.1 GB 内核 VAD 泄漏——修复只需关闭 P2P，不需要动任何驱动。**
+**Windows 上一个与"做种"相关的内核内存增长案例：传递优化（DoSvc）卡死的下载任务挂着 258~299 个互联网 peer、以每秒上千次 WMI 查询轮询网卡统计，查询大量返回 0x80041032（＝WBEM_E_CALL_CANCELLED，调用取消——**非配额耗尽**）并被反复重试（重试机制为推断），5 天累积 4.1 GB 内核 VAD 泄漏；实测关闭 P2P 后主泄漏停止（残余 ~0.3–0.8 GB/天未归案，见 #8）。**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-0078D4.svg)](LICENSE)
 
@@ -31,19 +31,19 @@
 
 一台 Windows 机器（i7 / 32 GB / Win11 预览通道）非分页内核内存 5 天涨到 **4.1 GB**，任务管理器里没有任何进程能解释，伴随全系统间歇性冻结（游戏中最明显，冻结数十秒自愈）。
 
-**笔者考证**完整的因果链——四环相扣，每环有实测：
+**笔者整理的因果链假说**——第 1–3 环（卡死任务→peer 连接→WMI 查询风暴）与处置对照有实测；第 4 环（失败→重试→分配）为推断，机制未逐一追踪：
 
 ```
 Windows 更新的下载任务卡在 Paused（22.8 MB 只下了 3.5%，悬挂不清除）
   → 该任务挂着 258~299 个互联网 peer 连接（本机在给全球做种，3 个任务合计 800+ 连接）
     → 每连接持续统计流量 → 每秒上千次 WMI 网卡统计查询
-      → WMI 配额耗尽（0x80041032），查询全部失败
-        → DoSvc 无退避死循环重试 → 每次重试拉起短命进程
+      → WMI 查询大量失败，返回 0x80041032＝WBEM_E_CALL_CANCELLED（调用被取消；非配额耗尽——配额违反为 0x8004106c）
+        → DoSvc 反复重试 → 每次重试拉起短命进程（重试/分配机制为推断，未追踪）
           → 内核 VAD 节点泄漏（5 天 1,600 万个 ≈ 4.1 GB）
             → GPU/网络拿不到内核内存 → 整机冻结、游戏卡死
 ```
 
-**与已知社区报告的差异**：四个环节各自都有人报告过（微软官方有 [DO 排错文档](https://learn.microsoft.com)、WMI 配额死循环有[同款案例](https://community.spiceworks.com)、VadS 泄漏现象有零散讨论），**但完整链条无人串联发表**。另有一个需要划清界限的邻居：[KB5072033 的 DO 内存问题](https://support.bmileisure.com)（2025）是补丁 bug，与本案例的做种机制完全不同。
+**与已知社区报告的差异**：前几环各有公开资料（微软 [DO 排错文档](https://learn.microsoft.com/en-us/windows/deployment/do/understanding-delivery-optimization)；社区 WMI 失败循环案例与 VadS 泄漏讨论——注：后两者的原始具体链接未能回溯，暂以文字指称），**笔者检索范围内未见完整串联的发表，不排除已有**。另有一个需要划清界限的邻居：[KB5072033 的 DO 内存问题](https://support.bmileisure.com)（2025）是补丁 bug，与本案例的做种机制完全不同。
 
 ---
 
@@ -54,14 +54,14 @@ Windows 更新的下载任务卡在 Paused（22.8 MB 只下了 3.5%，悬挂不�
 | 1 | 非分页池 5 天涨至 4,138 MB，其中 `VadS` 标签 1,478 MB / 1,615 万节点（另有 `daV` 族 688 MB，见 01） | 池标签快照（evidence/pooltag-timeline） | ✅ 实测（会话转录） |
 | 2 | 泄漏从开机起恒速持续（9,544 万次分配 ÷ 43 万秒 ≈ 每秒 220 次） | 分配计数回算 | ✅ 实测（会话转录） |
 | 3 | 3 个 DO 下载任务状态 Paused，下载 0.79 MB / 应下 22.8 MB，各挂 250~299 个互联网 peer，已上传 4.4 MB | `Get-DeliveryOptimizationStatus` 全字段快照 | ✅ 实测（会话转录） |
-| 4 | WMI-Activity 日志 400 条中 209 条来自 DoSvc，全部是同一 Realtek 网卡统计查询、全部返回 0x80041032 | 事件日志统计 | ✅ 实测（会话转录） |
+| 4 | WMI-Activity 日志 400 条中 209 条来自 DoSvc，全部是同一 Realtek 网卡统计查询、全部返回 0x80041032（该码＝WBEM_E_CALL_CANCELLED 调用取消，非配额耗尽——见微软 [WBEMSTATUS 枚举](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-wmi/a2899649-a5a3-4b13-9ffa-d8394dcdac63)与 [5858 排错文档](https://learn.microsoft.com/en-us/troubleshoot/windows-client/system-management-components/wmi-activity-event-5858-logged-with-resultcode-0x80041032)；取消的具体触发原因未定） | 事件日志统计 | ✅ 实测（会话转录） |
 | 5 | 逐服务停用对照：停 esrv/Vantage/NVDisplay 后泄漏持续；停 DoSvc 后泄漏速率从峰值 17,410/90s 骤降 | 因果对照实验 | ✅ 实测（会话转录） |
 | 6 | 关闭 P2P（DODownloadMode=0）后做种队列清空，800+ peer 连接消失 | 处置后复查 | ✅ 实测（会话转录） |
 | 7 | 重启后非分页池回落 975 MB（正常水位） | 重启后快照 | ✅ 实测（会话转录） |
 | 8 | 处置后仍有约 0.3~0.8 GB/天的 VAD 残余泄漏，来源未归案 | 多窗口速率测量 | ⚠️ 未结（见 02 第 4 节） |
 | 9 | 处置 1 天后：DODownloadMode=0 生效、DO 无任务、无复发 | 现场复查（2026-09-23） | ✅ 实测（落盘） |
 
-两条泄漏源都已定位并处置——修复 = 注册表关闭 P2P + 清做种队列 + 重启，全部见 [02 修复指南](docs/02-remediation.md)；残余尾巴（#8）记录在案、未归案，处置为"每周重启一次即可无感共存"。
+已定位并处置的泄漏路径见 #3–#7——修复 = 注册表关闭 P2P + 清做种队列 + 重启，全部见 [02 修复指南](docs/02-remediation.md)；残余尾巴（#8，约 0.3~0.8 GB/天）记录在案、**未归案**，处置为"每周重启一次即可无感共存"。
 
 ---
 

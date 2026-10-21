@@ -10,7 +10,7 @@
 >
 > This is an independent technical analysis, not affiliated with Microsoft; all scripts in this repository are read-only — see the [Disclaimer](DISCLAIMER.md).
 
-**A kernel-memory leak triggered by "seeding": Delivery Optimization (DoSvc) stuck jobs held 258–299 internet peers each, polled the NIC statistics via WMI a thousand times per second, every query failed on quota exhaustion (0x80041032) and was retried without backoff — accumulating 4.1 GB of kernel VAD leak over 5 days. The fix is turning P2P off; no driver is touched.**
+**A kernel-memory leak associated with "seeding": Delivery Optimization (DoSvc) stuck jobs held 258–299 internet peers each, polled the NIC statistics via WMI a thousand times per second; queries failed en masse with 0x80041032 (= WBEM_E_CALL_CANCELLED, a cancelled call — **not quota exhaustion**) and were retried repeatedly (the retry mechanism is inferred), accumulating 4.1 GB of kernel VAD leak over 5 days. Stopping P2P stopped the main leak in measurement; a ~0.3–0.8 GB/day residual remains unresolved (see #8).**
 
 > **Note for non-expert readers**: if your machine shows "Task Manager looks fine, yet the whole system stutters — reboot helps, it comes back days later", start with the [symptom check](#symptom-check) and then follow the [remediation doc](docs/02-remediation.en.md). You can hand this repo's link to your AI assistant and have it follow the steps — every step carries expected output.
 
@@ -31,19 +31,19 @@
 
 A Windows machine (i7 / 32 GB / Win11 preview channel) saw its nonpaged kernel memory climb to **4.1 GB over 5 days** with no process in Task Manager to explain it, accompanied by system-wide intermittent freezes (most visible in games; tens of seconds, self-recovering).
 
-**The author traced the complete causal chain** — four links, each measured:
+**The author's causal-chain hypothesis** — links 1–3 (stalled job → peer connections → WMI query storm) are backed by measurements and the stop-contrast; link 4 (failure → retry → allocation) is inferred, not traced:
 
 ```
 A Windows Update download job stuck Paused (22.8 MB, 3.5% downloaded, never cleaned up)
   → the job holds 258–299 internet-peer connections (this machine was seeding the world; 3 jobs, 800+ connections)
     → per-connection traffic statistics → a thousand+ WMI NIC-statistics queries per second
-      → WMI quota exhausted (0x80041032); every query fails
-        → DoSvc retries in a no-backoff loop; each retry spawns short-lived processes
+      → WMI queries fail en masse with 0x80041032 = WBEM_E_CALL_CANCELLED (call cancelled; NOT quota exhaustion — quota violation is 0x8004106c)
+        → DoSvc retries repeatedly; each retry spawns short-lived processes (retry/allocation mechanism inferred, not traced)
           → kernel VAD nodes leak (16 million in 5 days ≈ 4.1 GB)
             → GPU/network starve for kernel memory → freezes and in-game stalls
 ```
 
-**Difference from prior community reports**: each link individually is documented (Microsoft's official [DO troubleshooting](https://learn.microsoft.com), matching [WMI quota-loop cases](https://community.spiceworks.com), scattered VadS-leak discussions), but **the complete chain has not been published**. One neighbor to draw a line against: the [KB5072033 DO memory issue](https://support.bmileisure.com) (2025) was a patch bug — a completely different mechanism from the seeding chain here.
+**Difference from prior community reports**: the earlier links each have public material (Microsoft's official [DO documentation](https://learn.microsoft.com/en-us/windows/deployment/do/understanding-delivery-optimization); community WMI failure-loop cases and scattered VadS-leak discussions — note: the original specific links for the latter two could not be retraced, so they are cited by description), but **no published full chain was found within the author's searched sources; its existence is not excluded**. One neighbor to draw a line against: the [KB5072033 DO memory issue](https://support.bmileisure.com) (2025) was a patch bug — a completely different mechanism from the seeding chain here.
 
 ---
 
@@ -54,14 +54,14 @@ A Windows Update download job stuck Paused (22.8 MB, 3.5% downloaded, never clea
 | 1 | Nonpaged pool reached 4,138 MB in 5 days; the `VadS` tag alone held 1,478 MB / 16.15 M nodes | pool-tag snapshots (evidence/pooltag-timeline) | ✅ measured (session transcript) |
 | 2 | The leak ran at a constant rate since boot (95.44 M allocations ÷ 432,000 s ≈ 220/s) | allocation-count back-calculation | ✅ measured (session transcript) |
 | 3 | 3 DO jobs stuck Paused — 0.79 MB downloaded of 22.8 MB — each holding 250–299 internet peers, 4.4 MB already uploaded | full `Get-DeliveryOptimizationStatus` field dump | ✅ measured (session transcript) |
-| 4 | 209 of 400 WMI-Activity log entries came from DoSvc — all the same Realtek NIC-statistics query, all returning 0x80041032 | event-log tally | ✅ measured (session transcript) |
+| 4 | 209 of 400 WMI-Activity log entries came from DoSvc — all the same Realtek NIC-statistics query, all returning 0x80041032 (that code = WBEM_E_CALL_CANCELLED, a cancelled call — NOT quota exhaustion; see Microsoft's [WBEMSTATUS enumeration](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-wmi/a2899649-a5a3-4b13-9ffa-d8394dcdac63) and the [5858 troubleshooting doc](https://learn.microsoft.com/en-us/troubleshoot/windows-client/system-management-components/wmi-activity-event-5858-logged-with-resultcode-0x80041032); the specific trigger of the cancellation is undetermined) | event-log tally | ✅ measured (session transcript) |
 | 5 | Stop-one-service-at-a-time contrast: leak persisted after stopping esrv/Vantage/NVDisplay; after stopping DoSvc the rate collapsed from a 17,410/90 s peak | causal contrast experiment | ✅ measured (session transcript) |
 | 6 | After disabling P2P (DODownloadMode=0) the seeding queue emptied; 800+ peer connections gone | post-remediation check | ✅ measured (session transcript) |
 | 7 | After reboot the nonpaged pool returned to 975 MB (normal level) | post-reboot snapshot | ✅ measured (session transcript) |
 | 8 | A residual VAD leak of ~0.3–0.8 GB/day remains; source unidentified | multi-window rate measurements | ⚠️ unresolved (see doc 02 §4) |
 | 9 | One day after remediation: DODownloadMode=0 in effect, zero DO jobs, no recurrence | on-machine recheck (2026-09-23) | ✅ measured (persisted) |
 
-Both mechanisms were located and remediated — the fix = registry-disable P2P + clear the seeding queue + reboot, all in the [remediation doc](docs/02-remediation.en.md); the residual tail (#8) is documented, unresolved, and coexists harmlessly with a once-a-week reboot.
+The identified leak path (#3–#7) was located and remediated — the fix = registry-disable P2P + clear the seeding queue + reboot, all in the [remediation doc](docs/02-remediation.en.md); the residual tail (#8, ~0.3–0.8 GB/day) is documented, **unresolved**, and coexists harmlessly with a once-a-week reboot.
 
 ---
 
