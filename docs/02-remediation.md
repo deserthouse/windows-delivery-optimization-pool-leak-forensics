@@ -18,8 +18,7 @@
 Get-DeliveryOptimizationStatus | Where-Object { $_.NumPeers -gt 50 }
 ```
 
-**预期（中招）**：列出若干任务，`Status` 为 `Paused`、`NumPeers` 一两百、下载字节远小于文件大小。
-**预期（没中）**：无输出或任务正常。没中的读者请勿继续——你的问题在别处，池标签排查的通用方法见[微软官方 PoolMon 文档](https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/using-poolmon-to-find-a-kernel-mode-memory-leak)。
+**这是筛查线索，不是确诊（2026-10-21 限定）**：`NumPeers` 是服务端返回的总 peer 数（Internet 连接数另见 `InternetConnectionCount`，两者不可互换）；`Paused` + 高 peer + 下载停滞**只说明存在类似现场**——没有这些现象也不能排除池增长另有原因。命中者继续对照；未命中且池仍异常的，走通用池标签排查：[微软官方 PoolMon 文档](https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/using-poolmon-to-find-a-kernel-mode-memory-leak)。
 
 ---
 
@@ -32,7 +31,7 @@ Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimi
 
 **预期**：无报错。此设置等价于设置 → Windows 更新 → 交付优化 → 关闭"允许从其他电脑下载"，且对后续策略生效更可靠。
 
-**影响**：更新照常下载，只是来源改为微软服务器直连；不再给陌生 peer 做种（对带宽和延迟是净收益）。**不要禁用 DoSvc 服务**——Windows 更新依赖它。
+**影响（按官方语义限定）**：DODownloadMode=0 = HTTP 无 P2P；仍可使用 Connected Cache，不等于"仅微软服务器"。不再给陌生 peer 做种；带宽/延迟净收益因网络而异（未做对照测量）。**不要禁用 DoSvc 服务**——Windows 更新依赖它。
 
 ---
 
@@ -70,7 +69,7 @@ Get-DeliveryOptimizationStatus
 
 ## 5. 未结的尾巴（如实记录）
 
-处置后本机仍有约 **0.3~0.8 GB/天**的 VAD 残余泄漏（`VadS` 短节点约 52/秒，`daV` 长节点约 10/秒，双标签同源；每天几十上百万个节点），与本案的做种链无关（链条已断、队列已空后依然存在）。已排除：DoSvc/P2P、Intel SUR、HWiNFO 监控驱动、360、网易组件；嫌疑未清：火绒（自保护阻止了停用实验）。**共存方案**：每周自然重启一次即可完全无感。笔者选择记录而非追杀到底——0.7 GB/天的尾巴不构成危害，而干净环境下的终审（内核调试器逐进程 VAD 计数）需要正式版符号（预览通道不可得），成本收益不匹配。
+处置后本机仍有约 **0.3~0.8 GB/天**的 VAD 残余泄漏（`VadS` 短节点约 52/秒，`daV` 长节点约 10/秒，双标签同源；每天几十上百万个节点），做种链断开、队列清空后依然存在（残余与本案的**同源性未证实**——已对照排除：DoSvc/P2P、Intel SUR、HWiNFO 监控驱动、360、网易组件；嫌疑未清：火绒，自保护阻止了停用实验）。**共存建议（不是安全保证）**：是否重启看**可用内存水位、净增速率与工作负载**——evidence/pooltag-timeline 在 2 天 13 小时时已记池 2,637 MB、可用内存 2.3 GB 并建议重启，"每周一次完全无感"与该记录不符，撤回。终审需要正式版符号（预览通道 build 的符号获取失败记录未留档，仅记"尝试未果"）。
 
 ---
 

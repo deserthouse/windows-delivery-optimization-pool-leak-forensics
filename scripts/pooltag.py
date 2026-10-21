@@ -1,9 +1,32 @@
 #!/usr/bin/env python3
-"""Pool-tag snapshot: top-N tags by nonpaged usage (no WDK; NtQuerySystemInformation)."""
+"""Pool-tag snapshot: top-N tags by nonpaged usage (no WDK; NtQuerySystemInformation).
+
+结构前提（x64）：SYSTEM_POOLTAG_INFORMATION = 8 字节头（ULONG Count + 4 填充）
++ 每条 40 字节 SYSTEM_POOLTAG（Tag[4] 自然序 + Pad + 计数字段按 ABI 布局）。
+仅支持 64 位 Python（条目按 x64 固定偏移解析）。
+2026-10-21 修复（取证复核 DO-04）：补 pathlib 导入（此前保存即 NameError）；
+Tag 不再二次反转（内核缓冲区已是自然序，此前构造的 VadS 被打印成 SdaV）。
+"""
 import ctypes
 import json
 import struct
 import sys
+from pathlib import Path
+
+
+def parse_tags(data):
+    """解析 x64 SYSTEM_POOLTAG_INFORMATION 缓冲区 → [{tag,np_used,pg_used,np_allocs,np_frees}]"""
+    (count,) = struct.unpack_from("<I", data, 0)
+    tags = []
+    for i in range(count):
+        off = 8 + i * 40
+        tag = data[off:off + 4].decode("ascii", "replace")  # 自然序，不再反转
+        allocs, frees = struct.unpack_from("<II", data, off + 24)
+        (np_used,) = struct.unpack_from("<Q", data, off + 32)
+        (pg_used,) = struct.unpack_from("<Q", data, off + 16)
+        tags.append(dict(tag=tag, np_used=np_used, pg_used=pg_used,
+                         np_allocs=allocs, np_frees=frees))
+    return tags
 
 
 def query():
@@ -14,17 +37,7 @@ def query():
     st = ntdll.NtQuerySystemInformation(0x16, buf, ctypes.sizeof(buf), ctypes.byref(ret_len))
     if (st & 0xFFFFFFFF) != 0:
         raise SystemExit(f"query failed: {st:#x}")
-    data = buf.raw[:ret_len.value]
-    (count,) = struct.unpack_from("<I", data, 0)
-    tags = []
-    for i in range(count):
-        off = 8 + i * 40
-        tag = data[off:off + 4][::-1].decode("ascii", "replace")
-        allocs, frees = struct.unpack_from("<II", data, off + 24)
-        (np_used,) = struct.unpack_from("<Q", data, off + 32)
-        (pg_used,) = struct.unpack_from("<Q", data, off + 16)
-        tags.append(dict(tag=tag, np_used=np_used, pg_used=pg_used, np_allocs=allocs, np_frees=frees))
-    return tags
+    return parse_tags(buf.raw[:ret_len.value])
 
 
 if __name__ == "__main__":

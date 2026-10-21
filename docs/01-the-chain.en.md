@@ -29,17 +29,17 @@ Caller        : WU Client Download
 
 ---
 
-## Link 2: the WMI quota death-loop
+## Link 2: mass WMI query failures (0x80041032 = WBEM_E_CALL_CANCELLED, a cancelled call)
 
 **Symptom**: of 400 recent WMI-Activity entries, **209 came from DoSvc** (runner-up: 36) — all the same query, all failing:
 
 ```
 SELECT * FROM MSFT_NetAdapterStatisticsSettingData
 WHERE Name = 'Realtek Gaming 2.5GbE Family Controller'
-ResultCode = 0x80041032   ← WMI quota exhausted
+ResultCode = 0x80041032   ← WBEM_E_CALL_CANCELLED (call cancelled; NOT quota exhaustion — quota violation is 0x8004106c; the specific trigger is undetermined)
 ```
 
-**Why it holds**: 800+ connections × traffic-accounting needs → a thousand+ NIC-counter queries per second; once WMI's per-account quota fills, every query is refused; DoSvc's retry logic has no backoff (fail → retry immediately), closing the loop. Every retry walks the full path — COM activation, the WMI service, short-lived provider processes, driver counter reads — all in vain, yet every step creates and destroys kernel objects.
+**Evidence boundary (tightened 2026-10-21)**: supported — DoSvc dominates the error (209 of 400 recent entries), one identical query, all failing. The following is **inference** (unverified): "a thousand+ queries per second" cannot be derived from 400 undated entries (peer count ≠ call frequency), and the no-backoff retry loop was never traced. Inferred shape: fail → retry cycles, each walking COM activation / the WMI service / short-lived providers / driver counter reads, creating and destroying kernel objects.
 
 ---
 

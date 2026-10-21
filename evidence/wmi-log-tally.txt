@@ -7,4 +7,7 @@ All 209 entries: identical query, identical failure.
   Operation : IWbemServices::ExecQuery - ROOT/StandardCimv2 :
               SELECT * FROM MSFT_NetAdapterStatisticsSettingData
               WHERE Name = 'Realtek Gaming 2.5GbE Family Controller'
-  ResultCode: 0x80041032 (WBEM_E_QUOTA_VIOLATION)
+  ResultCode: 0x80041032
+  【2026-10-21 勘误】当处转录注释误写为 WBEM_E_QUOTA_VIOLATION：
+  微软官方枚举中 0x80041032 = WBEM_E_CALL_CANCELLED（调用取消）；
+  配额违反是 0x8004106c。原始转录值保留，注释更正。
